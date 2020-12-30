@@ -1,0 +1,684 @@
+#+TITLE: Las raíces de Lisp
+#+AUTHOR: Patricio Martínez
+#+EMAIL: maxxcan@disroot.org
+#+DATE: <2020-12-20 dom>
+#+STARTUP: latexpreview
+
+
+* Introducción 
+
+* Las raíces de Lisp -Paul Graham- 18 de Enero del 2002
+
+En 1960, /John McCarthy/ publicó un paper increíble en el cual el hizo para la programación algo como lo que hizo Euclídeo para la geometría[fn:1]. El mostró como, dado un puñado de operadores simples y una notación para funciones, se podía construir un lenguaje de programación completo. El llamó a este lenguaje Lisp, por "List Processing" porque una de sus ideas principales era usar una única estructura de datos llamada una /lista/ tanto para código como para datos. 
+
+El valor de entender lo que /McCarthy/ descubrió, no solo como un punto de referencia en la historia de la computación, sino como un modelo para lo que la programación está tendiendo a convertirse en nuestro tiempo. Me parece a mí que han habido dos realmente claros, modelos consistentes de programación hasta  ahora: El modelo C y el modelo Lisp. Esos dos parecen puntos de suelo elevado, con tierras pantanosas entre ellos. Al tiempo que los ordenadores han crecido en potencia, los nuevos lenguajes que han sido desarrollados se han movido continuamente hacia el modelo Lisp. Una popular receta para los nuevos lenguajes de programación que hace 20 años habían usado el modelo C de computación y añadido a ellos, poco a poco, partes de modelo Lisp, como los tipos en tiempo de ejecución y el colector de basura. 
+
+En este artículo vamos a intentar explicar de la forma más simple posible los términos que /McCarthy/ descubrió. El punto no es solo aprender sobre un resultado teórico interesante que alguien estudió hace cuarenta años, sino mostrar donde los lenguajes empezaron. El asunto inusual sobre Lisp en realidad, la calidad que define Lisp es que puede escribirse así mismo. Para entender lo que /McCarthy/ quiso decir con esto, vamos a ir volviendo a reconstruir sus pasos, con su notación matemática traducida a código Common Lisp ejecutable.   
+
+* Siete operadores primitivos
+
+Empezaremos con lo que, hemos definido como una /expresión/. Una expresión es un /átomo/, el cual es una secuencia de letras (ej. foo), o una lista de cero o más expresiones, separadas por un espacio en blanco y encerrada por paréntesis. Aquí hay algunas expresiones: 
+
+#+BEGIN_SRC lisp
+foo
+()
+(foo)
+(foo bar)
+(a b (c) d)
+#+END_SRC
+
+La última expresión es una lista de cuatro elementos, el tercero de los cuales es así mismo una lista de un elemento. 
+
+En aritmética la expresión 1 + 1 tiene el valor 2. Una expresión válida en Lisp también tiene valores. Si una expresión /e/ contiene un valor /v/ decimos que /e/ devuelve /v/. Nuestro siguiente paso es definir que tipos de expresiones pueden ser, y qué tipos de valores pueden devolver.
+
+Si una expresión es una lista, llamaremos al primer elemento el /operador/ y el el resto de elementos los /argumentos/. Vamos a definir *siete* operadores primitivos (en el sentido de axiomas): *quote, atom, eq, car, cdr, cons* y *cond*.  
+
+** Quote
+
+(quote x) devuelve x. Por motivos de legibilidad abreviaremos *(quote x)* como 'x.
+
+#+begin_src lisp
+(quote a)
+#+end_src 
+
+: a
+
+#+BEGIN_SRC lisp
+'a
+#+END_SRC
+
+: a
+
+#+begin_src lisp
+(quote (a b c))
+#+end_src 
+
+: (a b c)
+
+** Atom
+
+(atom x) devuelve el átomo t si el valor de /x/ es un átomo o una lista vacía. De otra manera devolverá (). En Lisp por convencionalismo usamos el átomo *t* para representar verdadero, y la lista vacía para representar falsedad.
+
+#+begin_src lisp
+(atom 'a)
+#+end_src 
+
+
+
+
+: t
+
+#+begin_src lisp
+(atom '(a b  c))
+#+end_src 
+
+
+: ()
+
+#+begin_src lisp
+(atom '())
+#+end_src 
+
+
+: t
+
+
+Ahora que tenemos un operador cuyo argumento es evaluado podemos para lo que es *quote*. Si ponemos la comilla a una lista la protegemos de que sea evaluada. Una lista sin comilla  da como un argumento a un operador como *atom* sea trata como código: 
+
+#+begin_src lisp
+(atom (atom 'a))
+#+end_src 
+
+
+: t
+
+
+Mientras que una lista con comilla es tratada como una mera lista, en este caso una lista de dos elementos:
+
+#+begin_src lisp
+(atom '(atom 'a))
+#+end_src 
+
+
+: ()
+
+
+Esto corresponde a la forma que usamos las comillas en Inglés. Cambridge es una ciudad en Massachusetts que contiene sobre 90.000 personas. "Cambridge" es una palabra que contiene nueve letras.
+
+La comilla puede parecer un concepto extraño, porque pocos lenguajes tiene algo como eso. Está muy cercano a uno de la más distintiva característica de Lisp: código y datos están hechos de la misma estructura de datos, y el operador quote (comilla)  es la forma de distinguir entre ellos.
+
+** Eq
+
+(eq x y) devuelve *t* si el valor de /x/ y el de /y/ son el mismo átomo o ambos listas vacías, o devolverá () en caso contrario.
+
+#+begin_src lisp
+(eq 'a 'a)
+#+end_src 
+
+
+: t
+
+#+begin_src lisp
+(eq 'a 'b)
+#+end_src 
+
+
+: ()
+
+#+begin_src lisp
+(eq '() '())
+#+end_src 
+
+
+: t
+
+
+** Car
+
+(car x) espera que el valor de /x/ sea una lista, y devuelve el primer elemento.
+
+
+#+begin_src lisp
+(car  '(a b c))
+#+end_src 
+
+
+: a
+
+
+** Cdr
+
+(cdr x) espera que el valor de /x/ sea una lista, y devuelve todo lo demás después del primer elemento.
+
+#+begin_src lisp
+(cdr '(a b c))
+#+end_src 
+
+
+: (b c)
+
+
+** Cons 
+
+(cons x y) espera que el valor de /y/ sea una lista, y devuelve una lista que contiene el valor de /x/ seguido por los elementos del valor de /y/
+
+#+begin_src lisp
+(cons 'a '(b c))
+#+end_src 
+
+
+: (a b c)
+
+#+begin_src lisp
+(cons 'a (cons 'b (cons 'c ())))
+#+end_src
+
+
+: (a b c)
+
+#+begin_src lisp 
+(car (cons 'a '(b c)))
+#+end_src
+
+
+: a
+
+
+#+begin_src lisp
+(cdr (cons 'a '(b c)))
+#+end_src 
+
+
+: (b c)
+
+
+** Cond 
+
+(cond (p$_1$) e$_1$)...(p$_n$ e$_n$)) es evaluado como sigue. Las expresiones /p/ son evaluadas en orden hasta que una devuelve /t/. Cuando una es encontrada, el valor de la correspondiente expresión /e/ es devuelto como el valor de la expresión *cond* completa. 
+
+
+#+begin_src lisp
+  (cond ((eq 'a 'b) 'first)
+	((atom 'a) 'second))
+#+end_src 	
+
+
+: second
+
+En cinco de nuestros siete operadores primitivos, los argumentos son siempre evaluados cuando una expresión inicia con ese operador siendo evaluado[fn:2]. Llamaremos a un operador de ese tipo una /función/.
+
+* Denotando funciones 
+
+Lo siguiente es definir una notación para describir funciones. Una función es expresada como (lambda (p$_1$...p$_n$) e) donde /p$_1$...p$_n$/ son átomos (llamados parámetros) y /e/ es una expresión. Una expresión cuyo primer elemento es tal una expresión
+
+((lambda (p$_1$...p$_n$) e) a$_1$...a$_n$)
+
+es llamada una /llamada a función/ y su valor es calculado como sigue. Cada expresión /a$_i$/ es evaluado. Entonces /e/ es evaluado. Durante la evaluación de /e/, el valor de cualquier ocurrencia de uno de p$_i$ es el valor del correspondiente /a$_i$/ en la más reciente llamada a la función.
+
+#+BEGIN_SRC lisp
+  ((lambda (x) (cons x '(b))) 'a)
+#+END_SRC
+
+
+: (a b)
+
+#+BEGIN_SRC lisp
+  ((lambda (x y) (cons x (cdr y)))
+   'z
+   '(a b c))
+#+END_SRC
+
+
+: (z b c)
+
+Si una expresión tiene como su primer argumento un átomo /f/ que no sea uno de los operadores primitivos
+
+(f a$_1$...a$_n$)
+
+y el valor de /f/ es una función  (lambda (p$_1$...p$_n$) e) entonces el valor de la expresión es el valor de 
+
+((lambda (p$_1$...p$_n$) e) a$_1$...a$_n$)
+
+En otras palabras, los parámetros puede ser usados como operadores en expresiones al igual que como argumentos: 
+
+#+BEGIN_SRC lisp
+  ((lambda (f) (f '(b c)))
+   '(lambda (x) (cons 'a x)))
+#+END_SRC
+
+#+RESULT: 
+: (a b c)
+
+Hay otra notación para funciones que habilita a las funciones que se puedan referir a sí mismas, de esta forma, nos da una conveniente forma de definir funciones recursivas[fn:3]. La notación   
+
+(label $\f$ (lambda (p$_1$...p$_n$) e))
+
+denota una función  que se comporta como (lambda (p$_1$...p$_n$) e), con la propiedad adicional que una ocurrencia de $\f$ con $\e$ evaluará a la expresión *label*, como si $\f$ fuera un parámetro de la función.
+
+Suponiendo que queremos definir una función *(subst /x/ /y/ /z/)*, el cual toma una expresión /x/, un átomo /y/, y una lista /z/, y devolverá una lista como /z/ pero con cada instancia de /y/ (y cualquier profundidad de anidamiento) en /z/ reemplazado por /x/
+
+#+begin_src lisp
+(subst. 'm 'b '(a b (a b c) d))
+#+end_src 
+
+
+: (a m (a m c) d)
+
+
+Podemos denotar esta función como 
+
+#+BEGIN_SRC lisp
+  (label subst (lambda (x y z)
+		 (cond ((atom z)
+			(cond ((eq z y) x)
+			      ('t z)))
+		       ('t (cons (subst x y (car z))
+				 (subst x y (cdr z)))))))
+#+END_SRC
+
+Abreviaremos $\f$ = (label $\f$ (lambda (p$_1$...p$_n$) e)) como (defun $\f$ (p$_1$...p$_n$) e)
+
+así 
+
+#+BEGIN_SRC lisp
+  (defun subst. (x y z)
+    (cond ((atom z)
+	   (cond ((eq z y) x)
+		 ('t z)))
+	  ('t (cons (subst x y (car z))
+		    (subst x y (cdr z))))))
+#+END_SRC
+
+
+
+
+De paso, vemos aquí como obtener una clausula por defecto en una expresión *cond*. Una clausula cuyo primer elemento es 't siempre acierto. Así 
+
+#+BEGIN_SRC lisp
+(cond (x y) ('t z))
+#+END_SRC
+
+es equivalente a lo que podríamos escribir en un lenguaje con la sintaxis 
+
+si /x/ entonces /y/ además /z/
+
+* Algunas funciones 
+
+Ahora que tenemos la forma de expresar funciones, vamos a definir algunas funciones nuevas en términos de nuestros siete operadores primitivos. Primero será conveniente introducir algunas abreviaciones para patrones comunes. Usaremos *cxr*, donde /x/ es una secuencia de as o d, como un abreviación para la correspondiente composición de *car* y *cdr*. Así por ejemplo (*cadr /e/*) es una abreviación para *(car (cdr /e/))*, el cual devuelve el segundo elemento de /e/. 
+
+#+begin_src lisp
+(cadr '((a b) (c d) e))
+#+end_src 
+
+
+: (c d)
+
+#+begin_src lisp
+(caddr '((a b) (c d) e))
+#+end_src 
+
+
+: e
+
+#+begin_src lisp
+(cdar '((a b) (c d) e))
+#+end_src 
+
+
+: (b)
+
+
+
+También, usaremos *(list e$_1$...e$_n$)* para *(cons e$_1$ ... (cons e$_n$ '()) ... )*
+
+#+begin_src lisp
+(cons 'a (cons 'b (cons 'c '())))
+#+end_src 
+
+
+: (a b c)
+
+#+begin_src lisp
+(list 'a 'b 'c)
+#+end_src 
+
+
+: (a b c)
+
+
+Ahora definiremos algunas funciones. He cambiado los nombres de esas funciones añadiendo un punto al final. Esto distinguirá las funciones primitivas de las definidas a partir de ellas, y también evitará conflictos con las funciones existentes en Common Lisp
+
+** Null. 
+
+(null. x) comprueba si un argumento es una lista vacía. 
+
+#+BEGIN_SRC lisp
+  (defun null. (x)
+    (eq x '()))
+#+END_SRC
+
+
+
+
+#+BEGIN_SRC lisp 
+  (null. 'a)
+#+END_SRC
+
+
+: ()
+
+#+BEGIN_SRC lisp 
+  (null. '())
+#+END_SRC 
+
+
+: t
+
+
+** And. 
+
+(and. x y) devuelve t si ambos argumentos lo son y () en caso contrario. 
+
+#+BEGIN_SRC lisp
+  (defun and. (x y)
+    (cond (x (cond (y 't) ('t ())))
+	  ('t '())))
+#+END_SRC
+
+
+
+
+#+begin_src lisp
+  (and. (atom 'a) (eq 'a 'a))
+#+end_src 
+
+
+: t
+
+
+#+begin_src lisp
+  (and. (atom 'a) (eq 'a 'b))
+#+end_src 
+
+
+: ()
+
+** Not. 
+
+(not. x) devuelve t si un argumento devuelve () y () si un argumento devuelve t.
+
+#+BEGIN_SRC lisp
+  (defun not. (x)
+    (cond (x '())
+	  ('t 't)))
+#+END_SRC
+
+
+
+
+#+begin_src lisp
+(not (eq 'a 'a))
+#+end_src 
+
+
+: ()
+
+#+begin_src lisp
+(not (eq 'a 'b))
+#+end_src 
+
+
+: t
+
+** Append. 
+
+(append. x y) toma dos listas y devuelve su concatenación.
+
+#+BEGIN_SRC lisp
+  (defun  append. (x y)
+    (cond ((null. x) y)
+	  ('t (cons (car x) (append. (cdr x) y)))))
+  (append. '(a b) '(c d))
+#+END_SRC
+
+
+: (a b c d)
+
+
+** Pair. 
+
+(pair. x y) toma dos listas de la misma longitud y devuelve una lista de dos elementos que contiene los sucesivos pares con un elemento de una lista y otro de la otra.
+
+#+BEGIN_SRC lisp
+  (defun pair. (x y)
+    (cond ((and. (null. x) (null. y)) '())
+	  ((and. (not. (atom x)) (not. (atom y)))
+	   (cons (list (car x) (car y))
+		 (pair. (cdr x (cdr y)))))))
+#+END_SRC
+
+
+
+
+#+BEGIN_SRC lisp
+(pair. '(x y z) '(a b c))
+#+END_SRC
+
+: ((x a) (y b) (z c))
+
+** Assoc.
+
+
+(assoc. x y) toma un átomo /x/ y una lista /y/ de la forma creada por *pair.*, y devuelve el segundo elemento de la primera lista en /y/ cuyo primer elemento es x. 
+
+#+BEGIN_SRC lisp
+  (defun  assoc. (x y)
+    (cond ((eq (caar y) x) (cadar y))
+	  ('t (assoc. x (cdr y)))))
+#+END_SRC
+
+
+
+
+
+#+BEGIN_SRC lisp
+(assoc. 'x '((x a) (y b)))
+#+END_SRC
+
+
+: a
+
+
+#+BEGIN_SRC lisp
+(assoc. 'x '((x new) (x a) (y b)))
+#+END_SRC
+
+
+: new
+
+* La sorpresa 
+
+
+Así nosotros podemos definir funciones que concatenen listas, sustituir una expresión por otra, etc. Una notación elegante, quizás, pero y ¿qué? Ahora viene la sorpresa. Podemos también, como resultado, escribir una función que actúe como un interprete para nuestro lenguaje: una función que tome como un argumento cualquier expresión Lisp, y devuelva su valor. Aquí está: 
+
+#+BEGIN_SRC lisp
+  (defun eval. (e a)
+    (cond
+     ((atom e) (assoc. e a))
+     ((atom (car e))
+      (cond 
+       ((eq (car e) 'quote) (cadr e))
+       ((eq (car e) 'atom) (atom (eval. (cadr e) a)))
+       ((eq (car e) 'eq) (eq  (eval. (cadr e) a)
+			      (eval. (caddr e) a)))
+       ((eq (car e) 'car) (car (eval. (cadr e) a)))
+       ((eq (car e) 'cdr) (cdr (eval. (cadr e) a)))
+       ((eq (car e) 'cons) (cons (eval. (cadr e) a)
+				 (eval. (caddr e) a)))
+       ((eq (car e) 'cond) (evcon. (cdr e) a))
+       ('t (eval. (cons (assoc. (car e) a)
+			(cdr e))
+		  a))))
+     ((eq (caar e) 'label)
+      (eval. (cons (caddar e) (cdr e))
+	     (cons (list (cadar e) (car e)) a)))
+     ((eq (caar e) 'lambda)
+      (eval. (caddar e)
+	     (append. (pair. (cadar e) (evlis. (cdr e) a))
+		      a)))))
+#+END_SRC
+
+La definición de *eval.* es más larga que cualquier otra que hayamos visto antes. Vamos a considerar como función cada parte. 
+
+La función toma dos argumentos: *e*, la expresión a ser evaluada, y *a*, una lista que representa los valores que los átomos han sido dados para aparecer como parámetros en las llamadas a la función. Esta lista es llamada el /entorno/, y tiene la forma creada por *pair.*. Es para construir y buscar esas listas que nosotros escribimos *pair.* y *assoc.*.
+
+La decisión de *eval.* es una expresión *cond* con cuatro clausulas. Cómo evaluamos una expresión depende del tipo que sea. La primera clausula maneja átomos. Si *e** es un átomo, buscaremos su valor en el entorno: 
+
+#+BEGIN_SRC lisp
+(eval. 'x '((x a) (y b)))
+#+END_SRC
+
+: a
+
+La segunda clausula de *eval.* es otra *cond* para manejo de expresiones de la forma (a ...) donde *a* es un átomo. Esos incluyen todos los usos de los operadores primitivos, y hay una clausula para cada uno.
+
+#+BEGIN_SRC lisp
+(eval. '(eq 'a 'a) '())
+#+END_SRC
+
+: t
+
+#+BEGIN_SRC lisp
+  (eval. '(cons x '(b c))
+	 '((x a) (y b)))
+#+END_SRC
+
+: (a b c)
+
+Todos esos (excepto *quote*) llaman a *eval.* para encontrar el valor de los argumentos.
+
+Las dos últimas clausulas son más complicadas. Para evaluar una expresión *cond*  llamamos a un una función subsidiaria llamada *evcon.*, la cual funciona a través de clausulas recursivamente, buscando por una la cual el primer elemento devuelva *t*. Cuando encuentra tal clausula devuelve su valor del segundo elemento. 
+
+
+#+BEGIN_SRC lisp
+  (eval. '(cond ((atom x) 'atom)
+		('t 'list))
+	 '((x '(a b))))
+#+END_SRC
+
+: list 
+
+La parte final de la segunda clausula de *eval.* maneja llamadas a funciones que han sido pasadas como parámetros. Esto funciona reemplazando el átomo con su valor (que debería ser una expresión *lambda* o *label*) y evalúa la expresión resultante. Así 
+
+#+BEGIN_SRC lisp
+  (eval. '(f '(b c))
+	 '((f (lambda (x) (cons 'a x)))))
+#+END_SRC
+
+devuelve (a b c)
+
+Las dos últimas clausulas en *eval.* manejan llamadas a funciones en las cuales el primer elemento son realmente expresiones *lambda* o *label*. Una expresión *label* es evaluada añadiendo una lista de el nombre de la función y la función en sí misma en el entorno, y entonces llamar a *eval.* en una expresión con la expresión *lambda* dentro sustituida por la expresión *label*. Esto es, 
+
+#+BEGIN_SRC lisp
+    (eval. '((label  firstatom (lambda (x)
+				 (cond ((atom x) x)
+				       ('t (firstatom (car x))))))
+	     y)
+	   '((y ((a b) (c d)))))
+#+END_SRC
+
+que eventualmente devuelve *a*. 
+
+Finalmente, una expresión de la forma ((lambda (p$_1$...p$_n$) e) a$_1$ ... a$_n$) es evaluada primero llamando a *evlis.* para obtener una lista de valores (v$_1$ ... v$_n$) de los argumentos a$_1$ ... a$_n$, y entonces evaluando /e/ con (p$_1$ v$_1$) ... (p$_n$ v$_n$) adjunto al frente del entorno. Así 
+
+#+BEGIN_SRC lisp
+  (eval. '((lambda (x y) (cons x (cdr y)))
+	   'a
+	   '(b c d)
+	   '())
+#+END_SRC
+
+Se convierte en 
+
+#+BEGIN_SRC lisp
+  (eval. '(cons x (cdr y))
+	 '((x a) (y (b c d))))
+#+END_SRC
+
+el cual devuelve eventualmente (a c d).
+
+* Consecuencias
+
+Ahora que hemos entendido como funciona *eval*, volvamos atrás y consideremos lo que significa. Lo que tenemos aquí es un modelo de computación remarcadamente elegante. Usando solo *quote, atom, eq, car, cdr, cons,* y *cond*, hemos definido una función, *eval.*, que realmente implementa nuestro lenguaje, y entonces usándolo podemos definir cualquier función adicional que queramos. 
+
+Habían modelos de computación en aquel entonces, por supuesto y más notablemente la /Máquina de Turing/. Pero los programas para la /Máquina de Turing/ no son muy edificantes de leer. Si queremos un lenguaje para describir algoritmos, podríamos querer algo más abstracto, y ese fue uno de los objetivos de McCarthy definiendo Lisp. 
+
+El lenguaje que el definió en 1960 tenía muchas ausencias. No tenía efectos laterales, ni ejecución secuencial (la cual era muy útil solo si tenemos los efectos laterales por supuesto), ni números prácticos[fn:4], ni Ámbito dinámico. Pero esas limitaciones pudieron ser remediadas con sorprendente poco código adicional. Steel y Sussman muestran como hacerlo en su famoso paper llamado "The Art of the Interpreter"[fn:5].
+
+Si entendemos la función *eval* de McCarthy, entenderemos más que solo una etapa en la historia de los lenguajes. Esas ideas están todavía en el núcleo semántico de Lisp hoy en día. Así estudiando el paper original de McCarthy, nos enseña, en un sentido, lo que Lisp realmente es. Esto no es algo que McCarthy diseñó tanto como algo que el descubrió. No es intrínsecamente un lenguaje para IA o para prototipado rápido, o cualquier otra tarea a ese nivel. Es lo que obtenemos (o una cosa que obtenemos) cuando intentamos axiomatizar la computación. 
+
+Con el tiempo, los lenguajes medianos, significando los lenguajes usados por el programador medio, han crecido consistentemente cercanos a Lisp. Así entendiendo *eval*, estamos entendiendo lo que probablemente sea el modelo de computación en el futuro. 
+
+* Notas
+
+En la traducción de la notación de McCarthy en código ejecutable he intentado cambiarlo lo menos posible. Estuve tentado en hacer el código más sencillo de leer, pero quise mantener el sabor del original. 
+
+En el paper de McCarthy, falsedad es representado por /f/, no como lista vacía. Usé () para representar falsedad para que así los ejemplos pudieran funcionar en Common Lisp. El código en ningún sitio depende de la falsedad ocurre también ser la lista vacía; nada es incluso engañado en el resultado devuelto por el predicado.
+
+Me he saltado las listas construidas fuera de las parejas separadas por puntos, porque no los necesitas para entender *eval*. También me he saltado las menciones a *apply*, pensando que fue *apply** (una muy temprana forma de ello, cuyo principal propósito fue "quote" argumentos) que McCarthy  llamó la función universal en 1960; *eval* solo entonces una subrutina que *apply* llamaba para hacer todo el trabajo.
+
+He definido *list*  y el *cxrs* como abreviación porque eso es cómo lo hizo McCarthy. De hecho, el *cxrs* podría haber sido definido como funciones ordinarias. Así pudo *list* si modificamos *eval*, como nosotros fácilmente podríamos, permitir que funciones tomen cualquier número de argumentos.
+
+El paper de McCarthy solo tiene cinco operadores primitivos. El usó *cond* y *quote* pero podría haber pensado en ellos como parte de su metalenguaje. El igualmente no definió los operadores lógicos *and* y *not*, pero esto es el menor de los problemas porque las adecuadas versiones pueden ser definidas como funciones.
+
+En la definición de *eval.* hemos llamado otras funciones como *pair.* y *assoc.*, pero cualquier llamada a una de esas funciones que hemos definido en términos de operadores primitivos pueden ser reemplazadas por una llamada a *eval.*. Esto es, 
+
+#+BEGIN_SRC lisp
+(assoc. (car e) a)
+#+END_SRC
+
+podría haber sido escrito como 
+
+#+BEGIN_SRC lisp
+  (eval. '((label assoc.
+		  (lambda (x y)
+		    (cond ((eq (caar y) x) (cadar y))
+			  ('t (assoc. x (cdr y))))))
+	   (car e)
+	   a)
+	 (cons (list 'e e) (cons (list 'a a) a)))
+#+END_SRC
+
+Hay un pequeño /bug/ en el *eval** de McCarthy. La línea 16 tenía (equivalente a) (evlis. (cdr e) a)) en vez de solo (cdr e), lo cual causa que los argumentos en una llamada a la función nombrada sean evaluados dos veces. Esto sugiere que esta descripción de *eval* no fue implementada en el lenguaje máquina en el IBM 704 cuando el paper fue enviado. Esto nos enseña como de difícil es estar seguro de la corrección de cualquier longitud de programa sin intentar ejecutarlo. 
+
+Encontré otro problema en el código de McCarthy. Después de dar la definición de *eval* el nos ofrece algunos ejemplos de funciones de orden superior que toman otras funciones como argumentos. El define *maplist*: 
+
+#+BEGIN_SRC lisp
+  (label maplist
+	 (lambda (x f)
+	   (cond ((nul x) '())
+		 ('t (cons (f x) (maplist (cdr x) f))))))
+#+END_SRC
+
+entonces lo usa para escribir una función simple *diff* para diferenciación simbólica. Pero *diff* pasa a *maplist* una función que usa *x* como un parámetro, y la referencia a él es capturada por el parámetro x dentro de *maplist*[fn:6].
+
+Es un elocuente testimonio del peligro del ámbito dinámico que incluso en un muy inicial ejemplo de funciones de Lisp de orden superior fueron rotas a causa de ello. Esto podría ser que McCarthy no estaba suficientemente advertido de las implicaciones del ámbito dinámico en 1960. El ámbito dinámico se mantuvo en las implementaciones de Lisp por un sorprendentemente largo tiempo hasta que Sussman y Steele desarrollaron Scheme en 1975. El ámbito léxico no complica la definición de *eval* mucho, pero podría hacer que los compiladores sean más difíciles de escribir.
+
+
+
+
+* Footnotes
+
+[fn:6]A día de hoy los programadores de Lisp podrían usar *mapcar* en vez de *maplist* aquí. Este ejemplo nos aclara un misterio: por que *maplist* no está en Common List en absoluto. Esto fue la función  mapping original, y  mapcar fue una adición más tarde.  
+
+[fn:5]Guy Lewis Steele, Jr. and Gerald Jay Sussman, "The Art of the Interpreter, or the Modularity Complex (Part Zero, One, and Two)," MIT AI Lab Memo 453, May 1978. 
+
+[fn:4]Es posible hacer aritmética en el Lisp de McCarthy de 1960 usando por ejemplo una lista de /n/ átomos para representar el número /n/. 
+
+[fn:3] Lógicamente no necesitamos definir una nueva notación para esto. Podríamos definir funciones recursivas en nuestra notación existente usando una función en funciones llamada la Y combinador. Esto podría ser lo que McCarthy no sabía sobre el Y combinador cuando el escribió su paper; en cualquier caso, la notación *label* es más legible. 
+
+
+
+[fn:2]Las expresiones que comienzan con otros dos operadores, *quote* y *cond*, son evaluados de forma distinta. Cuando una expresión con comillas es evaluada, su argumento no es evaluado, pero es simplemente devuelto como el valor de la expresión *quote* entera. Y en una expresión válida *cond*, solo un camino L-shaped de subexpresiones será evaluado. 
+
+[fn:1] "Recursive Functions of Symbolic Expressions and Their Computation by Machine, Part I" /Communications of the ACM 3:4, April 1960, pp. 184-195  
